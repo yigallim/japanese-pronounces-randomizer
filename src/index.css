@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+.responsive-text {
+  font-size: clamp(36px, min(26vw, 20vh), 128px);
+  line-height: 1.15;
+}
+
+.responsive-mb {
+  margin-bottom: clamp(24px, 5vh, 36px);
+}
+
+.responsive-text-gap {
+  margin-right: clamp(12px, 4vw, 48px);
+}
