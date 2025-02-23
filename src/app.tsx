@@ -124,7 +124,7 @@ const App: React.FC = () => {
     <>
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetTrigger asChild>
-          <button className="z-50 cursor-pointer bg-gray-200 absolute max-md:bottom-4 left-4 md:top-8 md:left-8 text-gray-600 p-1.5 rounded border border-gray-300 shadow-md">
+          <button className="z-50 cursor-pointer bg-gray-200 absolute max-md:bottom-4 left-4 md:top-8 md:left-8 [@media(max-height:425px)]:top-4 text-gray-600 p-1.5 rounded border border-gray-300 shadow-md duration-200">
             <Settings />
           </button>
         </SheetTrigger>
@@ -192,7 +192,7 @@ const App: React.FC = () => {
       {sidebarOpen || <div onClick={getRandomPronounce} className="fixed inset-0 z-10" />}
       <div className="h-full">
         <Tabs
-          className="h-full pt-4 md:pt-8 flex flex-col"
+          className="h-full pt-4 md:pt-8 [@media(max-height:425px)]:pt-4 flex flex-col"
           value={mode}
           onValueChange={(value) => {
             setRomaji(null);
@@ -201,11 +201,11 @@ const App: React.FC = () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
           }}
         >
-          <TabsList className="flex w-min mx-auto z-40 relative">
+          <TabsList className="flex w-min mx-auto z-40 relative [@media(max-height:425px)]:scale-90 duration-300">
             <TabsTrigger value="romanjiToKana">Romanji → Kana</TabsTrigger>
             <TabsTrigger value="kanaToRomanji">Kana → Romanji</TabsTrigger>
           </TabsList>
-          <div className="mt-1 md:mt-2 text-center text-muted-foreground">
+          <div className="mt-1 md:mt-2 text-center text-muted-foreground [@media(max-height:425px)]:mt-1 [@media(max-height:425px)]:scale-90 duration-200">
             Press Enter/Space/Click Anywhere
           </div>
           <TabsContent className="flex-1 responsive-mb" value="romanjiToKana">

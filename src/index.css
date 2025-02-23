@@ -182,7 +182,7 @@
 }
 
 .responsive-mb {
-  margin-bottom: clamp(24px, 5vh, 36px);
+  margin-bottom: clamp(10px, calc(6.4vh - 10px), 36px);
 }
 
 .responsive-text-gap {
