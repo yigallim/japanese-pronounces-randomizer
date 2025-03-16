@@ -30,10 +30,43 @@ const syllableGroups: Record<string, string> = {
   wawon: "wa/wo/n",
 };
 
+export const voicedSyllableGroups: Record<string, string> = {
+  gagigugego: "ga/gi/gu/ge/go",
+  zazizuzezo: "za/ji/zu/ze/zo",
+  dadidudedo: "da/di/du/de/do",
+  babibubebo: "ba/bi/bu/be/bo",
+  papipupepo: "pa/pi/pu/pe/po",
+};
+
 type SettingsType = {
   delay: number;
   selectedSyllables: Record<string, boolean>;
+  selectedVoicedSyllables: Record<string, boolean>;
   kanaVariant: "hiragana" | "katakana" | "both";
+};
+
+const defaultSettings: SettingsType = {
+  delay: 2,
+  selectedSyllables: {
+    aiueo: true,
+    kakikukeko: true,
+    sashisuseso: true,
+    tachitsuteto: true,
+    naninuneno: true,
+    hahifuheho: true,
+    mamimumemo: true,
+    yayuyo: true,
+    rarirurero: true,
+    wawon: true,
+  },
+  selectedVoicedSyllables: {
+    gagigugego: false,
+    zazizuzezo: false,
+    dadidudedo: false,
+    babibubebo: false,
+    papipupepo: false,
+  },
+  kanaVariant: "both",
 };
 
 type Mode = "romanjiToKana" | "kanaToRomanji";
@@ -45,28 +78,29 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<Mode>("romanjiToKana");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [initialized, setInitialized] = useState(false);
-
-  const [settings, setSettings] = useState<SettingsType>({
-    delay: 2,
-    selectedSyllables: {
-      aiueo: true,
-      kakikukeko: true,
-      sashisuseso: true,
-      tachitsuteto: true,
-      naninuneno: true,
-      hahifuheho: true,
-      mamimumemo: true,
-      yayuyo: true,
-      rarirurero: true,
-      wawon: true,
-    },
-    kanaVariant: "both",
-  });
+  const [settings, setSettings] = useState<SettingsType>(defaultSettings);
+  const lastPronounceRef = useRef<string | null>(null);
 
   useEffect(() => {
     const savedSettings = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      try {
+        const parsed: Partial<SettingsType> = JSON.parse(savedSettings);
+        setSettings((prev) => ({
+          ...prev,
+          ...parsed,
+          selectedSyllables: {
+            ...prev.selectedSyllables,
+            ...parsed.selectedSyllables,
+          },
+          selectedVoicedSyllables: {
+            ...prev.selectedVoicedSyllables,
+            ...parsed.selectedVoicedSyllables,
+          },
+        }));
+      } catch {
+        setSettings(defaultSettings);
+      }
     }
     setInitialized(true);
   }, []);
@@ -81,14 +115,42 @@ const App: React.FC = () => {
   };
 
   const getRandomPronounce = () => {
-    const enabledGroups = Object.entries(settings.selectedSyllables)
+    const enabledUnvoiced = Object.entries(settings.selectedSyllables)
       .filter(([_, isEnabled]) => isEnabled)
       .map(([key]) => key);
 
-    if (enabledGroups.length === 0) return;
+    const enabledVoiced = Object.entries(settings.selectedVoicedSyllables)
+      .filter(([_, isEnabled]) => isEnabled)
+      .map(([key]) => key);
 
-    const availableKeys = enabledGroups.flatMap((group) => syllableGroups[group].split("/"));
-    const randomKey = availableKeys[Math.floor(Math.random() * availableKeys.length)];
+    const allEnabledGroups = [...enabledUnvoiced, ...enabledVoiced];
+    if (allEnabledGroups.length === 0) return;
+
+    const availableKeys = allEnabledGroups.flatMap((group) => {
+      if (syllableGroups[group]) {
+        return syllableGroups[group].split("/");
+      } else if (voicedSyllableGroups[group]) {
+        return voicedSyllableGroups[group].split("/");
+      }
+      return [];
+    });
+
+    if (availableKeys.length === 0) return;
+
+    let randomKey: string;
+
+    if (availableKeys.length === 1) {
+      randomKey = availableKeys[0];
+    } else {
+      let attempts = 0;
+      do {
+        randomKey = availableKeys[Math.floor(Math.random() * availableKeys.length)];
+        attempts++;
+        if (attempts > 100) break;
+      } while (randomKey === lastPronounceRef.current);
+    }
+
+    lastPronounceRef.current = randomKey;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -120,6 +182,9 @@ const App: React.FC = () => {
     };
   }, [settings, sidebarOpen, mode]);
 
+  const areAllSelected = (obj: Record<string, boolean>) =>
+    Object.values(obj).every((val) => val === true);
+
   return (
     <>
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -130,13 +195,13 @@ const App: React.FC = () => {
         </SheetTrigger>
         <SheetContent
           side="left"
-          className="w-[250px] md:w-[300px] flex flex-col h-full px-2 md:px-4"
+          className="w-[280px] md:w-[320px] flex flex-col h-full px-1 md:px-2"
         >
-          <SheetHeader>
-            <SheetTitle>Settings</SheetTitle>
+          <SheetHeader className="border-b pb-2 mx-2">
+            <SheetTitle className="font-medium">Settings</SheetTitle>
           </SheetHeader>
-          <ScrollArea className="flex-1 px-2">
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 px-1">
+            <div className="space-y-4 mx-2">
               <div>
                 <Label htmlFor="delay">Delay (s)</Label>
                 <Input
@@ -147,12 +212,13 @@ const App: React.FC = () => {
                   onChange={(e) => updateSettings({ delay: Number(e.target.value) })}
                 />
               </div>
+
               <div>
                 <Label htmlFor="kanaVariant">Kana Variant</Label>
                 <Select
                   value={settings.kanaVariant}
                   onValueChange={(value) =>
-                    updateSettings({ kanaVariant: value as "hiragana" | "katakana" | "both" })
+                    updateSettings({ kanaVariant: value as SettingsType["kanaVariant"] })
                   }
                 >
                   <SelectTrigger id="kanaVariant" className="mt-1 w-full">
@@ -165,8 +231,22 @@ const App: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
-                <Label>Pronounces</Label>
+                <Label>Unvoiced Pronounces</Label>
+                <div className="flex justify-between items-center p-2 border rounded">
+                  <Label className="text-sm">Select All</Label>
+                  <Switch
+                    checked={areAllSelected(settings.selectedSyllables)}
+                    onCheckedChange={(checked) => {
+                      const newState = Object.fromEntries(
+                        Object.keys(settings.selectedSyllables).map((key) => [key, checked])
+                      );
+                      updateSettings({ selectedSyllables: newState });
+                    }}
+                  />
+                </div>
+
                 {Object.entries(syllableGroups).map(([key, label]) => (
                   <div key={key} className="flex justify-between items-center p-2 border rounded">
                     <Label>{label}</Label>
@@ -177,6 +257,39 @@ const App: React.FC = () => {
                           selectedSyllables: {
                             ...settings.selectedSyllables,
                             [key]: !settings.selectedSyllables[key],
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Voiced Pronounces</Label>
+                <div className="flex justify-between items-center p-2 border rounded">
+                  <Label className="text-sm">Select All</Label>
+                  <Switch
+                    checked={areAllSelected(settings.selectedVoicedSyllables)}
+                    onCheckedChange={(checked) => {
+                      const newState = Object.fromEntries(
+                        Object.keys(settings.selectedVoicedSyllables).map((key) => [key, checked])
+                      );
+                      updateSettings({ selectedVoicedSyllables: newState });
+                    }}
+                  />
+                </div>
+
+                {Object.entries(voicedSyllableGroups).map(([key, label]) => (
+                  <div key={key} className="flex justify-between items-center p-2 border rounded">
+                    <Label>{label}</Label>
+                    <Switch
+                      checked={settings.selectedVoicedSyllables[key]}
+                      onCheckedChange={() =>
+                        updateSettings({
+                          selectedVoicedSyllables: {
+                            ...settings.selectedVoicedSyllables,
+                            [key]: !settings.selectedVoicedSyllables[key],
                           },
                         })
                       }
